@@ -5,26 +5,20 @@ from uuid import UUID
 
 from pydantic import field_validator, Field, ConfigDict, BaseModel
 from typing_extensions import Annotated
+from orders.orders_service.orders import OrderStatus
 
 
-class Size(Enum):
-    small = "small"
-    medium = "medium"
-    big = "big"
-
-
-class Status(Enum):
-    created = "created"
-    paid = "paid"
-    progress = "progress"
-    cancelled = "cancelled"
-    dispatched = "dispatched"
-    delivered = "delivered"
+# class OrderStatus(Enum):
+#     CREATED = "CREATED"
+#     PAID = "PAID"
+#     PROGRESS = "PROGRESS"
+#     CANCELLED = "CANCELLED"
+#     DISPATCHED = "DISPATCHED"
+#     DELIVERED = "DELIVERED"
 
 
 class OrderItemSchema(BaseModel):
-    product: str
-    size: Size
+    product_id: int
     quantity: Optional[Annotated[int, Field(ge=1, strict=True)]] = 1
     model_config = ConfigDict(extra="forbid")
 
@@ -36,14 +30,14 @@ class OrderItemSchema(BaseModel):
 
 
 class CreateOrderSchema(BaseModel):
-    order: Annotated[List[OrderItemSchema], Field(min_length=1)]
+    items: Annotated[List[OrderItemSchema], Field(min_length=1)]
     model_config = ConfigDict(extra="forbid")
 
 
 class GetOrderSchema(CreateOrderSchema):
     id: UUID
-    created: datetime
-    status: Status
+    created_at: datetime
+    status: OrderStatus
 
 
 class GetOrdersSchema(BaseModel):

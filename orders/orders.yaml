@@ -8,10 +8,6 @@ info:
 servers:
   - url: http://localhost:8000
     description: local development server
-  - url: https://coffeemesh.com
-    description: main production server
-  - url: https://coffeemesh-staging.com
-    description: staging server for testing purposes only
 
 paths:
   /orders:
@@ -91,85 +87,6 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
-    put:
-      summary: Replaces an existing order
-      operationId: updateOrder
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateOrderSchema'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref:  '#/components/schemas/GetOrderSchema'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-    delete:
-      summary: Deletes an existing order
-      operationId: deleteOrder
-      responses:
-        '204':
-          description: The resource was deleted successfully
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-  /orders/{order_id}/pay:
-    parameters:
-      - in: path
-        name: order_id
-        required: true
-        schema:
-          type: string
-          format: uuid
-    post:
-      summary: Processes payment for an order
-      operationId: payOrder
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetOrderSchema'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-
-  /orders/{order_id}/cancel:
-    parameters:
-      - in: path
-        name: order_id
-        required: true
-        schema:
-          type: string
-          format: uuid
-    post:
-      summary: Cancels an order
-      operationId: cancelOrder
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetOrderSchema'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
 components:
   responses:
     NotFound:
@@ -186,15 +103,6 @@ components:
             $ref: '#/components/schemas/Error'
 
   securitySchemes:
-    openId:
-      type: openIdConnect
-      openIdConnectUrl: https://coffeemesh-dev.eu.auth0.com/.well-known/openid-configuration
-    oauth2:
-      type: oauth2
-      flows:
-        clientCredentials:
-          tokenUrl: https://coffeemesh-dev.eu.auth0.com/oauth/token
-          scopes: {}
     bearerAuth:
       type: http
       scheme: bearer
@@ -216,17 +124,11 @@ components:
       additionalProperties: false
       type: object
       required:
-        - product
-        - size
+        - product_id
       properties:
-        product:
-          type: string
-        size:
-          type: string
-          enum:
-            - small
-            - medium
-            - big
+        product_id:
+          type: integer
+          format: int64
         quantity:
           type: integer
           format: int64
@@ -238,9 +140,9 @@ components:
       additionalProperties: false
       type: object
       required:
-        - order
+        - items
       properties:
-        order:
+        items:
           type: array
           minItems: 1
           items:
@@ -251,9 +153,9 @@ components:
       type: object
       required:
         - id
-        - created
+        - created_at
         - status
-        - order
+        - items
       properties:
         id:
           type: string
@@ -264,12 +166,12 @@ components:
         status:
           type: string
           enum:
-            - created
-            - paid
-            - progress
-            - cancelled
-            - dispatched
-            - delivered
+            - CREATED
+            - PAID
+            - PROGRESS
+            - CANCELLED
+            - DISPATCHED
+            - DELIVERED
         order:
           type: array
           minItems: 1
@@ -277,14 +179,6 @@ components:
             $ref: '#/components/schemas/OrderItemSchema'
 
 security:
-  - oauth2:
-      - getOrders
-      - createOrder
-      - getOrder
-      - updateOrder
-      - deleteOrder
-      - payOrder
-      - cancelOrder
   - bearerAuth:
       - getOrders
       - createOrder

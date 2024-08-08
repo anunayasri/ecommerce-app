@@ -16,8 +16,9 @@ from starlette.requests import Request
 from starlette.responses import Response, JSONResponse
 
 
-from orders.orders_service.exceptions import OrderNotFoundError
+from orders.orders_service.exceptions import OrderNotFoundException
 from orders.orders_service.orders_service import OrdersService
+from orders.orders_service.orders import Order, OrderItem
 from orders.repository.orders_repository import OrdersRepository
 from orders.web.api.schemas import (
     GetOrderSchema,
@@ -30,7 +31,7 @@ from orders.web.api.auth import decode_and_validate_token
 from pathlib import Path
 import yaml
 
-app = FastAPI(debug=True, )
+app = FastAPI(debug=True)
 
 orders_doc = yaml.safe_load(
     (Path(__file__).parent / '../../orders.yaml').read_text()
@@ -62,7 +63,7 @@ class AuthorizeRequestMiddleware(BaseHTTPMiddleware):
             request.state.user_id = "test"
             return await call_next(request)
 
-        if request.url.path in ["/docs", "/openapi.json"]:
+        if request.url.path in ["/docs", "/redoc", "/openapi.json"]:
             return await call_next(request)
         if request.method == "OPTIONS":
             return await call_next(request)
@@ -96,7 +97,6 @@ class AuthorizeRequestMiddleware(BaseHTTPMiddleware):
         else:
             request.state.user_id = token_payload["sub"]
         return await call_next(request)
-
 
 app.add_middleware(AuthorizeRequestMiddleware)
 
@@ -133,11 +133,13 @@ def create_order(request: Request, payload: CreateOrderSchema):
     with Session(engine) as session:
         repo = OrdersRepository(session)
         orders_service = OrdersService(repo)
-        order = payload.dict()["order"]
-        for item in order:
-            item["size"] = item["size"].value
-        order = orders_service.place_order(order, request.state.user_id)
+        items_json = payload.dict()["items"]
+
+        items = [OrderItem(**item) for item in items_json]
+
+        order = orders_service.place_order(items, request.state.user_id)
         session.commit()
+
         return_payload = order.dict()
     return return_payload
 
@@ -152,7 +154,7 @@ def get_order(request: Request, order_id: UUID):
     #             order_id=order_id, user_id=request.state.user_id
     #         )
     #     return order.dict()
-    # except OrderNotFoundError:
+    # except OrderNotFoundException:
     #     raise HTTPException(
     #         status_code=404, detail=f"Order with ID {order_id} not found"
         
@@ -165,7 +167,7 @@ def get_order(request: Request, order_id: UUID):
                 order_id=order_id, # user_id=request.state.user_id
             )
         return order.dict()
-    except OrderNotFoundError:
+    except OrderNotFoundException:
         raise HTTPException(
             status_code=404, detail=f"Order with ID {order_id} not found"
         
