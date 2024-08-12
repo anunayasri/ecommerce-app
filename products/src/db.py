@@ -8,7 +8,7 @@ class Base(so.DeclarativeBase):
 
 class ProductStatus(enum.Enum):
     ACTIVE = 'ACTIVE'
-    DEACTIVE = 'DEACTIVE'
+    INACTIVE = 'INACTIVE'
 
 class Product(Base):
     __tablename__ = "products"

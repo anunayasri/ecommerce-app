@@ -1,9 +1,9 @@
-import os
-from typing import Optional, Annotated
-from uuid import UUID
+from typing import Annotated
 
 from pathlib import Path
-import yaml
+from fastapi.responses import JSONResponse
+from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
+from starlette.types import HTTPExceptionHandler
 import jwt
 from jwt.exceptions import InvalidTokenError
 from cryptography.x509 import load_pem_x509_certificate
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from db import Base, Product, ProductStatus
-from schemas import CreateProductSchema, GetProductSchema
+from schemas import CreateProductSchema, GetProductSchema, UpdateProductSchema
 
 app = FastAPI(debug=True)
 
@@ -38,7 +38,6 @@ app.add_middleware(
 engine = sa.create_engine("sqlite:///products.db", echo=True)
 Session = so.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 security = HTTPBearer()
 
 def get_session():
@@ -114,19 +113,97 @@ def create_order(
     return product
 
 
-# @app.get("/orders", response_model=GetOrdersSchema)
-# def get_orders(
-#     request: Request,
-#     cancelled: Optional[bool] = None,
-#     limit: Optional[int] = None,
-# ):
-#     pass
-#
-#
-# @app.post(
-#     "/orders",
-#     status_code=status.HTTP_201_CREATED,
-#     response_model=GetOrderSchema,
-# )
-# def create_order(request: Request, payload: CreateOrderSchema):
-#     pass
+@app.put( "/product/{product_id}", response_model=GetProductSchema)
+def update_product(
+    product_id: int,
+    product_data: UpdateProductSchema,
+    session: Annotated[so.Session, Depends(get_session)],
+    curr_user_id: Annotated[int, Depends(get_current_user)],
+):
+    """Seller can update the title, description, quantity of the product.
+    Deletion is not supported. However, the owner can delist the product by
+    setting the status field to INACTIVE
+    """
+    stmt = sa.select(Product).where(Product.id == product_id)
+    product = session.scalars(stmt).one_or_none()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Product not found",
+        )
+
+    if product.user_id != curr_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not the owner of the product.",
+        )
+
+    product.title = product_data.title
+    product.description = product_data.description
+    product.quantity = product_data.quantity
+    product.status = product_data.status or product.status
+
+    session.commit()
+    session.refresh(product)
+
+    return product
+
+@app.post('/product/{product_id}/buy')
+def buy_product(
+    product_id: int,
+    order_quantity: int,
+    session: Annotated[so.Session, Depends(get_session)],
+    # curr_user_id: Annotated[int, Depends(get_current_user)],
+) -> JSONResponse:
+    """This api is used by the orders service to buy a product.
+    The product quantity will be descreased by the order amount.
+    The api will return an error if the inventory is insufficient.
+    """
+
+    product = session.scalars(sa.select(Product).where(
+        Product.id == product_id,
+        Product.status == ProductStatus.ACTIVE,
+    )).one_or_none()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Product not found",
+        )
+
+    if product.quantity < order_quantity:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, 
+            detail=f"Insufficient quantity. Available: {product.quantity}, Requested: {order_quantity}"
+        )
+
+    # Use optimistic concurrency control to reduce the product quantity
+    stmt = sa.update(Product).where(
+        Product.id == product_id,
+        Product.status == ProductStatus.ACTIVE,
+        Product.quantity - order_quantity >= 0,
+    ).values(quantity=Product.quantity - order_quantity)
+
+    result = session.execute(stmt)
+    rows_updated = result.rowcount
+    session.commit()
+
+    # query the product again
+    product = session.scalars(sa.select(Product).where(
+        Product.id == product_id,
+        Product.status == ProductStatus.ACTIVE,
+    )).one_or_none()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Product not found",
+        )
+
+    if rows_updated == 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, 
+            detail=f"Insufficient quantity. Available: {product.quantity}, Requested: {order_quantity}"
+        )
+
+    return JSONResponse(HTTP_200_OK)
