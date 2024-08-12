@@ -1,21 +1,20 @@
-from typing import Annotated
-
+import enum
 from pathlib import Path
-from fastapi.responses import JSONResponse
-from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
-from starlette.types import HTTPExceptionHandler
-import jwt
-from jwt.exceptions import InvalidTokenError
-from cryptography.x509 import load_pem_x509_certificate
+from typing import Annotated, Dict
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.params import Depends
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
+from cryptography.x509 import load_pem_x509_certificate
 from db import Base, Product, ProductStatus
+import jwt
+from jwt.exceptions import InvalidTokenError
 from schemas import CreateProductSchema, GetProductSchema, UpdateProductSchema
 
 app = FastAPI(debug=True)
@@ -38,8 +37,13 @@ app.add_middleware(
 engine = sa.create_engine("sqlite:///products.db", echo=True)
 Session = so.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-security = HTTPBearer()
+bearer_auth = HTTPBearer()
 
+class UserRole(enum.Enum):
+    SELLER = "SELLER"
+    BUYER = "BUYER"
+    ORDER_SRV = "ORDER_SRV"
+    
 def get_session():
     s = Session()
     try:
@@ -47,9 +51,9 @@ def get_session():
     finally:
         s.close()
     
-def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]
-) -> int: # def get_current_user() -> int:
+def get_jwt_payload(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_auth)]
+) -> int:
 
     """Validates the jwt token in the Authentication header.
     Returns the user_id from jwt token.
@@ -78,16 +82,24 @@ def get_current_user(
         if user_id is None:
             raise credentials_exception
 
+        return payload
+
     except InvalidTokenError as e:
         print(f"invalid token : {e}")
         raise credentials_exception
-    
-    # user_id is an int
-    return int(user_id)
 
-@app.get('/')
-async def main():
-    return {'msg': 'Hello World'}
+def get_current_user(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> int:
+    return int(jwt_payload['user_id'])
+
+def get_user_role(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> UserRole | None:
+    role = jwt_payload.get('role')
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Role is mandatory",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) 
+    return UserRole(role)
 
 
 @app.post(
@@ -99,7 +111,14 @@ def create_order(
     payload: CreateProductSchema, 
     session: Annotated[so.Session, Depends(get_session)],
     user_id: Annotated[int, Depends(get_current_user)],
+    role: Annotated[UserRole, Depends(get_user_role)],
 ):
+    if role != UserRole.SELLER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a seller",
+        )
+
     product = Product(
         title=payload.title,
         description=payload.description,
@@ -119,11 +138,19 @@ def update_product(
     product_data: UpdateProductSchema,
     session: Annotated[so.Session, Depends(get_session)],
     curr_user_id: Annotated[int, Depends(get_current_user)],
+    role: Annotated[UserRole, Depends(get_user_role)],
 ):
     """Seller can update the title, description, quantity of the product.
     Deletion is not supported. However, the owner can delist the product by
     setting the status field to INACTIVE
     """
+
+    if role != UserRole.SELLER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a seller",
+        )
+
     stmt = sa.select(Product).where(Product.id == product_id)
     product = session.scalars(stmt).one_or_none()
     if not product:
@@ -148,17 +175,24 @@ def update_product(
 
     return product
 
+
 @app.post('/product/{product_id}/buy')
 def buy_product(
     product_id: int,
     order_quantity: int,
     session: Annotated[so.Session, Depends(get_session)],
-    # curr_user_id: Annotated[int, Depends(get_current_user)],
+    role: Annotated[UserRole, Depends(get_user_role)],
 ) -> JSONResponse:
     """This api is used by the orders service to buy a product.
     The product quantity will be descreased by the order amount.
     The api will return an error if the inventory is insufficient.
     """
+
+    if role != UserRole.ORDER_SRV:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Thsi is an internal api",
+        )
 
     product = session.scalars(sa.select(Product).where(
         Product.id == product_id,
@@ -206,4 +240,7 @@ def buy_product(
             detail=f"Insufficient quantity. Available: {product.quantity}, Requested: {order_quantity}"
         )
 
-    return JSONResponse(HTTP_200_OK)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={},
+    )
