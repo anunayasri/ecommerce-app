@@ -16,5 +16,5 @@ def decode_and_validate_token(access_token):
         access_token,
         key=public_key,
         algorithms=["RS256"],
-        audience=["http://127.0.0.1:8000/orders"],
+        # audience=["http://127.0.0.1:8000/orders"],
     )

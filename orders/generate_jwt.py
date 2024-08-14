@@ -5,10 +5,11 @@ from cryptography.hazmat.primitives import serialization
 def generate_jwt():
     now = datetime.utcnow()
     payload = {
-        "iss": "https://auth.coffeemesh.io/",
-        "sub": "ec7bbccf-ca89-4af3-82ac-b41e4831a962", "aud": "http://127.0.0.1:8000/orders",
+        "sub": "100", 
+        # "aud": "http://127.0.0.1:8000/products",
         "iat": now.timestamp(),
-        "exp": (now + timedelta(hours=24)).timestamp(), "scope": "openid",
+        "exp": (now + timedelta(hours=24)).timestamp(),
+        "scope": "openid",
     }
 
     private_key_text = Path("private_key.pem").read_text()

@@ -2,11 +2,10 @@ from typing import Optional
 import os
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from starlette import status
 from starlette.middleware.base import (
     RequestResponseEndpoint,
     BaseHTTPMiddleware,
@@ -15,6 +14,16 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import Response, JSONResponse
 
+from jwt import (
+    ExpiredSignatureError,
+    ImmatureSignatureError,
+    InvalidAlgorithmError,
+    InvalidAudienceError,
+    InvalidKeyError,
+    InvalidSignatureError,
+    InvalidTokenError,
+    MissingRequiredClaimError,
+)
 
 from orders.orders_service.exceptions import OrderNotFoundException
 from orders.orders_service.orders_service import OrdersService
@@ -118,7 +127,7 @@ def get_orders(
         orders_service = OrdersService(repo)
         results = orders_service.list_orders(
             # limit=limit, cancelled=cancelled, user_id=request.state.user_id
-            limit=limit, cancelled=cancelled, user_id='1'
+             user_id='1'
         )
 
     return {"orders": [result.dict() for result in results]}
