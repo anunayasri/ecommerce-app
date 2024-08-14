@@ -56,7 +56,6 @@ def get_jwt_payload(
 ) -> int:
 
     """Validates the jwt token in the Authentication header.
-    Returns the user_id from jwt token.
     """
 
     token = credentials.credentials
@@ -78,10 +77,6 @@ def get_jwt_payload(
             audience=["PRODUCTS_SRV"],
         )
 
-        user_id: str = payload.get("user_id")
-        if user_id is None:
-            raise credentials_exception
-
         return payload
 
     except InvalidTokenError as e:
@@ -89,7 +84,15 @@ def get_jwt_payload(
         raise credentials_exception
 
 def get_current_user(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> int:
-    return int(jwt_payload['user_id'])
+    user_id = jwt_payload.get("user_id")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return int(user_id)
 
 def get_user_role(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> UserRole | None:
     role = jwt_payload.get('role')
