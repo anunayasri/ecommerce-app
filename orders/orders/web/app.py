@@ -3,6 +3,7 @@ import os
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, status
+import uvicorn
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -181,3 +182,6 @@ def get_order(request: Request, order_id: UUID):
             status_code=404, detail=f"Order with ID {order_id} not found"
         
         )
+
+if __name__ == '__main__':
+        uvicorn.run("orders.web.app:app", host="0.0.0.0", port=8003, reload=True)
