@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta, timezone
-import hashlib
-import os
-import sys
 from typing import Annotated
+import uvicorn
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 import jwt
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import load_pem_x509_certificate
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -22,26 +24,31 @@ from web.api.schemas import GetUserSchema
 
 # to get a string like this run:
 # openssl rand -hex 32
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
+# SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+
+public_key_text = (Path(__file__).parent / "../../public_key.pem").read_text()
+PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
+ALGORITHM = "RS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
 
-sqlite_db = "users.db"
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins, or specify a list of allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods, or specify allowed methods
+    allow_headers=["*"],  # Allow all headers, or specify allowed headers
+)
 
-# if not os.path.exists(sqlite_db):
-#     print(f"{sqlite_db} does not exists !!")
-#     sys.exit(1)
-#
-# print(f">>>> Using db file: {os.path.abspath(sqlite_db)}")
+sqlite_db = "users.db"
 
 engine = sa.create_engine(f"sqlite:///{sqlite_db}")
 Session = so.sessionmaker(engine)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/token")
 
 class Token(BaseModel):
     access_token: str
@@ -68,7 +75,14 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    private_key_text = Path("private_key.pem").read_text()
+    private_key = serialization.load_pem_private_key(
+        private_key_text.encode(),
+        password=None,
+    )
+
+    encoded_jwt = jwt.encode(to_encode, key=private_key, algorithm=ALGORITHM)
     return encoded_jwt
 
 def get_user(Session, username):
@@ -85,7 +99,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, key=PUBLIC_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -99,7 +113,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         raise credentials_exception
     return user
 
-@app.post("/token")
+@app.post("/users/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
@@ -122,3 +136,5 @@ async def read_users_me(
 ):
     return current_user
 
+if __name__ == '__main__':
+        uvicorn.run("web.app:app", host="0.0.0.0", port=8001, reload=True)
