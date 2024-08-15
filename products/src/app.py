@@ -1,6 +1,7 @@
 import enum
 from pathlib import Path
 from typing import Annotated, Dict
+import uvicorn
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,10 @@ from db import Base, Product, ProductStatus
 import jwt
 from jwt.exceptions import InvalidTokenError
 from schemas import CreateProductSchema, GetProductSchema, UpdateProductSchema
+
+public_key_text = (Path(__file__).parent / "../public_key.pem").read_text()
+PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
+
 
 app = FastAPI(debug=True)
 
@@ -67,12 +72,9 @@ def get_jwt_payload(
     )
 
     try:
-        public_key_text = (Path(__file__).parent / "../public_key.pem").read_text()
-        public_key = load_pem_x509_certificate(public_key_text.encode()).public_key()
-
         payload = jwt.decode(
             token,
-            key=public_key,
+            key=PUBLIC_KEY,
             algorithms=['RS256'],
             audience=["PRODUCTS_SRV"],
         )
@@ -247,3 +249,5 @@ def buy_product(
         status_code=status.HTTP_200_OK,
         content={},
     )
+if __name__ == '__main__':
+        uvicorn.run("app:app", host="0.0.0.0", port=8002, reload=True)
