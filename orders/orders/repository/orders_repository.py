@@ -3,7 +3,6 @@ from orders.orders_service.orders import Order, OrderItem, OrderStatus
 from orders.repository.models import OrderModel, OrderItemModel
 from orders.orders_service.exceptions import OrderNotFoundException
 import sqlalchemy as sa
-from uuid import UUID
 
 # The repository layer should not expose internal dependencies to business layer.
 # Return Order entity instead of OrderModel which a DB model.

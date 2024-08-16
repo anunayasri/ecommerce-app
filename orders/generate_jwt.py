@@ -5,11 +5,10 @@ from cryptography.hazmat.primitives import serialization
 def generate_jwt():
     now = datetime.utcnow()
     payload = {
-        "sub": "100", 
         # "aud": "http://127.0.0.1:8000/products",
         "iat": now.timestamp(),
         "exp": (now + timedelta(hours=24)).timestamp(),
-        "scope": "openid",
+        "user_id": "100", 
     }
 
     private_key_text = Path("private_key.pem").read_text()

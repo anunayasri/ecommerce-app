@@ -1,32 +1,18 @@
-from typing import Optional
-import os
-from uuid import UUID
+from typing import Optional, Annotated, Dict
+import enum
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.params import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import uvicorn
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+import sqlalchemy as sa
+import sqlalchemy.orm as so
 
-from starlette.middleware.base import (
-    RequestResponseEndpoint,
-    BaseHTTPMiddleware,
-)
-from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
+from cryptography.x509 import load_pem_x509_certificate
+import jwt
 
-from jwt import (
-    ExpiredSignatureError,
-    ImmatureSignatureError,
-    InvalidAlgorithmError,
-    InvalidAudienceError,
-    InvalidKeyError,
-    InvalidSignatureError,
-    InvalidTokenError,
-    MissingRequiredClaimError,
-)
-
-from orders.orders_service.exceptions import OrderNotFoundException
+from orders.orders_service.exceptions import OrderNotFoundException, ProductNotBookedException
 from orders.orders_service.orders_service import OrdersService
 from orders.orders_service.orders import Order, OrderItem
 from orders.repository.orders_repository import OrdersRepository
@@ -36,17 +22,17 @@ from orders.web.api.schemas import (
     GetOrdersSchema,
 )
 
-from orders.web.api.auth import decode_and_validate_token
-
 from pathlib import Path
-import yaml
+
+public_key_text = Path("public_key.pem").read_text()
+PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
 
 app = FastAPI(debug=True)
 
-orders_doc = yaml.safe_load(
-    (Path(__file__).parent / '../../orders.yaml').read_text()
-)
-app.openapi = lambda: orders_doc
+# orders_doc = yaml.safe_load(
+#     (Path(__file__).parent / '../../orders.yaml').read_text()
+# )
+# app.openapi = lambda: orders_doc
 
 origins = [
     "http://localhost",
@@ -63,73 +49,84 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-engine = create_engine("sqlite:///orders.db", echo=True)
+engine = sa.create_engine("sqlite:///orders.db", echo=True)
 
-class AuthorizeRequestMiddleware(BaseHTTPMiddleware):
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
-        if os.getenv("AUTH_ON", "False") != "True":
-            request.state.user_id = "test"
-            return await call_next(request)
 
-        if request.url.path in ["/docs", "/redoc", "/openapi.json"]:
-            return await call_next(request)
-        if request.method == "OPTIONS":
-            return await call_next(request)
+bearer_auth = HTTPBearer()
 
-        bearer_token = request.headers.get("Authorization")
-        if not bearer_token:
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={
-                    "detail": "Missing access token",
-                    "body": "Missing access token",
-                },
-            )
-        try:
-            auth_token = bearer_token.split(" ")[1].strip()
-            token_payload = decode_and_validate_token(auth_token)
-        except (
-            ExpiredSignatureError,
-            ImmatureSignatureError,
-            InvalidAlgorithmError,
-            InvalidAudienceError,
-            InvalidKeyError,
-            InvalidSignatureError,
-            InvalidTokenError,
-            MissingRequiredClaimError,
-        ) as error:
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": str(error), "body": str(error)},
-            )
-        else:
-            request.state.user_id = token_payload["sub"]
-        return await call_next(request)
+class UserRole(enum.Enum):
+    SELLER = "SELLER"
+    BUYER = "BUYER"
+    ORDER_SRV = "ORDER_SRV"
 
-app.add_middleware(AuthorizeRequestMiddleware)
+def get_session():
+    s = so.Session(engine)
+    try:
+        yield s 
+    finally:
+        s.close()
+
+def get_jwt_payload(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_auth)]
+) -> int:
+
+    """Validates the jwt token in the Authentication header.
+    """
+
+    token = credentials.credentials
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(
+            token,
+            key=PUBLIC_KEY,
+            algorithms=['RS256'],
+        )
+
+        return payload
+
+    except jwt.InvalidTokenError as e:
+        print(f"invalid token : {e}")
+        raise credentials_exception
+
+def get_current_user(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> int:
+    user_id = jwt_payload.get("user_id")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect user details",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return int(user_id)
+
+def get_user_role(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> UserRole | None:
+    role = jwt_payload.get('role')
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Role is mandatory",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) 
+    return UserRole(role)
 
 @app.get("/orders", response_model=GetOrdersSchema)
 def get_orders(
-    request: Request,
-    cancelled: Optional[bool] = None,
-    limit: Optional[int] = None,
+    session: Annotated[so.Session, Depends(get_session)],
+    user_id: Annotated[int, Depends(get_current_user)],
 ):
-    # with UnitOfWork() as unit_of_work:
-    #     repo = OrdersRepository(unit_of_work.session)
-    #     orders_service = OrdersService(repo)
-    #     results = orders_service.list_orders(
-    #         limit=limit, cancelled=cancelled, user_id=request.state.user_id
-    #     )
-
-    with Session(engine) as session:
-        repo = OrdersRepository(session)
-        orders_service = OrdersService(repo)
-        results = orders_service.list_orders(
-            # limit=limit, cancelled=cancelled, user_id=request.state.user_id
-             user_id='1'
-        )
+    repo = OrdersRepository(session)
+    orders_service = OrdersService(repo)
+    try:
+        results = orders_service.list_orders(user_id=user_id)
+    except OrderNotFoundException:
+        # return an empty list
+        return {"orders": []}
 
     return {"orders": [result.dict() for result in results]}
 
@@ -139,48 +136,47 @@ def get_orders(
     status_code=status.HTTP_201_CREATED,
     response_model=GetOrderSchema,
 )
-def create_order(request: Request, payload: CreateOrderSchema):
-    with Session(engine) as session:
-        repo = OrdersRepository(session)
-        orders_service = OrdersService(repo)
-        items_json = payload.dict()["items"]
+def create_order(
+    payload: CreateOrderSchema,
+    session: Annotated[so.Session, Depends(get_session)],
+    user_id: Annotated[int, Depends(get_current_user)],
 
-        items = [OrderItem(**item) for item in items_json]
+):
+    repo = OrdersRepository(session)
+    orders_service = OrdersService(repo)
+    items_json = payload.dict()["items"]
 
-        order = orders_service.place_order(items, request.state.user_id)
+    items = [OrderItem(**item) for item in items_json]
+
+    try:
+        order = orders_service.place_order(items, user_id)
         session.commit()
+        return order.dict()
 
-        return_payload = order.dict()
-    return return_payload
+    except ProductNotBookedException:
+        # rollback any changes made to the DB
+        session.rollback()
+        # reraise the exception
+        raise ProductNotBookedException()
 
 
 @app.get("/orders/{order_id}", response_model=GetOrderSchema)
-def get_order(request: Request, order_id: UUID):
-    # try:
-    #     with UnitOfWork() as unit_of_work:
-    #         repo = OrdersRepository(unit_of_work.session)
-    #         orders_service = OrdersService(repo)
-    #         order = orders_service.get_order(
-    #             order_id=order_id, user_id=request.state.user_id
-    #         )
-    #     return order.dict()
-    # except OrderNotFoundException:
-    #     raise HTTPException(
-    #         status_code=404, detail=f"Order with ID {order_id} not found"
-        
+def get_order(
+    order_id: int,
+    session: Annotated[so.Session, Depends(get_session)],
+    user_id: Annotated[int, Depends(get_current_user)],
+):
+    repo = OrdersRepository(session)
+    orders_service = OrdersService(repo)
+
     try:
-        with Session(engine) as session:
-            repo = OrdersRepository(session)
-            orders_service = OrdersService(repo)
-            order = orders_service.get_order(
-                # order_id=order_id, user_id=request.state.user_id
-                order_id=order_id, # user_id=request.state.user_id
-            )
+        order = orders_service.get_order(
+            order_id=order_id, user_id=user_id,
+        )
         return order.dict()
     except OrderNotFoundException:
         raise HTTPException(
             status_code=404, detail=f"Order with ID {order_id} not found"
-        
         )
 
 if __name__ == '__main__':

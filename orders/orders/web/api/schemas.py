@@ -1,7 +1,6 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
-from uuid import UUID
 
 from pydantic import field_validator, Field, ConfigDict, BaseModel
 from typing_extensions import Annotated
@@ -35,7 +34,7 @@ class CreateOrderSchema(BaseModel):
 
 
 class GetOrderSchema(CreateOrderSchema):
-    id: UUID
+    id: int
     created_at: datetime
     status: OrderStatus
 
