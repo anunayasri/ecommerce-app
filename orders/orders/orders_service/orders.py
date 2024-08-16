@@ -1,6 +1,5 @@
 from typing import List
 from enum import Enum
-import uuid
 from datetime import datetime
 
 class OrderStatus(Enum):
@@ -32,7 +31,7 @@ class Order:
         items: List[OrderItem],
         status: OrderStatus,
         user_id: int,
-        id: uuid.UUID | None,
+        id: int | None,
         created_at: datetime | None,
         updated_at: datetime | None,
         order_ = None,
