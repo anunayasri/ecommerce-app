@@ -2,11 +2,8 @@ from sqlalchemy import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
-from orders.config import AppConfig
-from orders.orders_service.orders_service import OrdersService
-from orders.orders_service.orders import Order, OrderItem, OrderStatus
-from orders.repository.orders_repository import OrdersRepository
-from orders.repository.models import Base, OrderModel, OrderItemModel
+from config import AppConfig
+from repository.models import Base, OrderModel, OrderItemModel
 
 
 def main():

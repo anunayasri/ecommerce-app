@@ -4,9 +4,10 @@ from pathlib import Path
 import requests
 import jwt
 from cryptography.hazmat.primitives import serialization
-from orders.orders_service.exceptions import OrderNotFoundException, ProductNotBookedException
-from orders.repository.orders_repository import OrdersRepository
-from orders.orders_service.orders import OrderItem
+from orders_service.exceptions import OrderNotFoundException, ProductNotBookedException
+from repository.orders_repository import OrdersRepository
+from orders_service.orders import OrderItem
+from config import AppConfig
 
 
 class OrdersService:
@@ -19,16 +20,14 @@ class OrdersService:
     def place_order(self, items: List[OrderItem], user_id: int):
         # book iterms from the product service
         # TODO: Batch api to book items in product service
-        # TODO: Move this to env var
-        PRODUCT_SRV_URL = 'http://localhost:8002'
-        PRIVATE_KEY_FILE = 'private_key.pem'
+        PRODUCT_SRV_URL = f"{AppConfig().PRODUCT_SRV_HOST}:{AppConfig().PRODUCT_SRV_PORT}"
 
         # token = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJQUk9EVUNUU19TUlYiLCJpYXQiOjE3MjM1OTU5NDIuMDY0MywiZXhwIjoxNzIzNjgyMzQyLjA2NDMsInVzZXJfaWQiOiIxMDAiLCJyb2xlIjoiT1JERVJfU1JWIn0.Is1RKscGbVRVST7vkGhgW0vGlXASzfvkEhDaH8-d_rOD0QWnN7cvfNrjzZmZULkFw9ZsW26wnV9Vd11rdCDDi7H0jr0IpJV-mbDlyTHan-H2uRCaN2tXsKVt8MPu9XYvO4dodly4JReYg4iGH15F2mK28kfx1j5MYDlQB73PQZR_iZOzVLQgAK3RV4-hN2sM_HU-70INQGxNRw17EhkDogr8NV1PXpoLTVnMaBERmyk8ABas_BZn30iWFcrmk8KvNjldKst4sHYrObUWcUcpnpOlAWnLwdvmHWLMuWg30RSV9mRPmnD5hpRg2V1SKrGAg7sOyzoNdQZvwhmKTJlF5g'
 
         # TODO: Write orders and order_items to DB in INIT state. 
         # Then call products api. Update the order_items status as per the resp.
 
-        token = gen_token_for_product_srv(PRIVATE_KEY_FILE)
+        token = gen_token_for_product_srv(AppConfig().AUTH_JWT_PRIVATE_KEY_FILE)
         booked_items = []
         for item in items:
             try:

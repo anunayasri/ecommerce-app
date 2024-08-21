@@ -13,12 +13,12 @@ import sqlalchemy.orm as so
 from cryptography.x509 import load_pem_x509_certificate
 import jwt
 
-from orders.config import AppConfig
-from orders.orders_service.exceptions import OrderNotFoundException, ProductNotBookedException
-from orders.orders_service.orders_service import OrdersService
-from orders.orders_service.orders import Order, OrderItem
-from orders.repository.orders_repository import OrdersRepository
-from orders.web.api.schemas import (
+from config import AppConfig
+from orders_service.exceptions import OrderNotFoundException, ProductNotBookedException
+from orders_service.orders_service import OrdersService
+from orders_service.orders import Order, OrderItem
+from repository.orders_repository import OrdersRepository
+from web.schemas import (
     GetOrderSchema,
     CreateOrderSchema,
     GetOrdersSchema,
@@ -185,4 +185,4 @@ def get_order(
         )
 
 if __name__ == '__main__':
-        uvicorn.run("orders.web.app:app", host="0.0.0.0", port=8003, reload=True)
+        uvicorn.run("web.app:app", host="0.0.0.0", port=8003, reload=True)

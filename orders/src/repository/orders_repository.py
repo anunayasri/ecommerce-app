@@ -1,7 +1,7 @@
 from typing import List
-from orders.orders_service.orders import Order, OrderItem, OrderStatus
-from orders.repository.models import OrderModel, OrderItemModel
-from orders.orders_service.exceptions import OrderNotFoundException
+from orders_service.orders import Order, OrderItem, OrderStatus
+from repository.models import OrderModel, OrderItemModel
+from orders_service.exceptions import OrderNotFoundException
 import sqlalchemy as sa
 
 # The repository layer should not expose internal dependencies to business layer.

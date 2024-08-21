@@ -6,7 +6,7 @@ import sqlalchemy.dialects.postgresql as pg
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.orm import DeclarativeBase, relationship
-from orders.orders_service.orders import OrderStatus
+from orders_service.orders import OrderStatus
 
 
 class Base(so.DeclarativeBase):

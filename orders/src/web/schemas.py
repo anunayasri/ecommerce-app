@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from pydantic import field_validator, Field, ConfigDict, BaseModel
 from typing_extensions import Annotated
-from orders.orders_service.orders import OrderStatus
+from orders_service.orders import OrderStatus
 
 
 # class OrderStatus(Enum):

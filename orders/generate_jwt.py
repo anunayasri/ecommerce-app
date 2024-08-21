@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import jwt
 from cryptography.hazmat.primitives import serialization
-from orders.config import AppConfig
+from config import AppConfig
 
 def generate_jwt():
     now = datetime.utcnow()
