@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
+from orders.config import AppConfig
 from orders.orders_service.orders_service import OrdersService
 from orders.orders_service.orders import Order, OrderItem, OrderStatus
 from orders.repository.orders_repository import OrdersRepository
@@ -9,7 +10,8 @@ from orders.repository.models import Base, OrderModel, OrderItemModel
 
 
 def main():
-    engine = create_engine("sqlite:///orders.db")
+    conf = AppConfig()
+    engine = create_engine(f"sqlite:///{conf.ORDERS_DB_URL}")
 
     print("Tring to create seed data for Orders DB")
     print("Note: The script will fail if the data already exists in the table")

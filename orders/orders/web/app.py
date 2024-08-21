@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Optional, Annotated, Dict
 import enum
 
@@ -12,6 +13,7 @@ import sqlalchemy.orm as so
 from cryptography.x509 import load_pem_x509_certificate
 import jwt
 
+from orders.config import AppConfig
 from orders.orders_service.exceptions import OrderNotFoundException, ProductNotBookedException
 from orders.orders_service.orders_service import OrdersService
 from orders.orders_service.orders import Order, OrderItem
@@ -21,10 +23,9 @@ from orders.web.api.schemas import (
     CreateOrderSchema,
     GetOrdersSchema,
 )
-
 from pathlib import Path
 
-public_key_text = Path("public_key.pem").read_text()
+public_key_text = Path(AppConfig().AUTH_JWT_PUBLIC_KEY_FILE).read_text()
 PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
 
 app = FastAPI(debug=True)
@@ -49,9 +50,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-engine = sa.create_engine("sqlite:///orders.db", echo=True)
-
-
 bearer_auth = HTTPBearer()
 
 class UserRole(enum.Enum):
@@ -59,7 +57,14 @@ class UserRole(enum.Enum):
     BUYER = "BUYER"
     ORDER_SRV = "ORDER_SRV"
 
-def get_session():
+@lru_cache
+def get_config() -> AppConfig:
+    return AppConfig()
+
+
+def get_session(conf: Annotated[AppConfig, Depends(get_config)]):
+    # engine = sa.create_engine("sqlite:///orders.db", echo=True)
+    engine = sa.create_engine(f"sqlite:///{conf.ORDERS_DB_URL}", echo=True)
     s = so.Session(engine)
     try:
         yield s 
@@ -68,7 +73,7 @@ def get_session():
 
 def get_jwt_payload(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_auth)]
-) -> int:
+) -> Dict:
 
     """Validates the jwt token in the Authentication header.
     """

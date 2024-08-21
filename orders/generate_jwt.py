@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import jwt
 from cryptography.hazmat.primitives import serialization
+from orders.config import AppConfig
+
 def generate_jwt():
     now = datetime.utcnow()
     payload = {
@@ -11,7 +13,7 @@ def generate_jwt():
         "user_id": "100", 
     }
 
-    private_key_text = Path("private_key.pem").read_text()
+    private_key_text = Path(AppConfig().AUTH_JWT_PRIVATE_KEY_FILE).read_text()
     private_key = serialization.load_pem_private_key(
         private_key_text.encode(),
         password=None,
