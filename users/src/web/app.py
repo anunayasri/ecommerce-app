@@ -20,7 +20,7 @@ from users_service.entities import User
 from users_service.users_service import UsersService
 from users_service.auth import verify_password
 
-from web.api.schemas import GetUserSchema
+from web.schemas import GetUserSchema
 
 # to get a string like this run:
 # openssl rand -hex 32
