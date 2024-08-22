@@ -17,10 +17,11 @@ from db import Base, Product, ProductStatus
 import jwt
 from jwt.exceptions import InvalidTokenError
 from schemas import CreateProductSchema, GetProductSchema, UpdateProductSchema
+from config import AppConfig
 
-public_key_text = (Path(__file__).parent / "../public_key.pem").read_text()
+conf = AppConfig()
+public_key_text = Path(conf.AUTH_JWT_PUBLIC_KEY_FILE).read_text()
 PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
-
 
 app = FastAPI(debug=True)
 
@@ -39,7 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-engine = sa.create_engine("sqlite:///products.db", echo=True)
+engine = sa.create_engine(conf.PRODUCTS_DB_URL, echo=True)
 Session = so.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 bearer_auth = HTTPBearer()

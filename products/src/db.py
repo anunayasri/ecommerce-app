@@ -24,3 +24,6 @@ class Product(Base):
         server_default=sa.func.current_timestamp(),
         server_onupdate=sa.func.current_timestamp(),
     )
+
+    def __repr__(self) -> str:
+        return f"<Product id={self.id} title={self.title} user_id={self.user_id} quantity={self.quantity}>"

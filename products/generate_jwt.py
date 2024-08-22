@@ -5,6 +5,8 @@ from pathlib import Path
 import jwt
 from cryptography.hazmat.primitives import serialization
 
+from config import AppConfig
+
 class Role(enum.Enum):
     SELLER = "SELLER"
     BUYER = "BUYER"
@@ -16,11 +18,12 @@ def generate_jwt(role: Role):
         "aud": "PRODUCTS_SRV",
         "iat": now.timestamp(),
         "exp": (now + timedelta(hours=24)).timestamp(),
-        "user_id": "100",
+        "user_id": "1",
         "role": role.value,
     }
 
-    private_key_text = Path("private_key.pem").read_text()
+    conf = AppConfig
+    private_key_text = Path(conf.AUTH_JWT_PRIVATE_KEY_FILE).read_text()
     private_key = serialization.load_pem_private_key(
         private_key_text.encode(),
         password=None,
