@@ -1,3 +1,8 @@
+import os 
+import sys 
+
+print(f">>> PATH: {sys.path}")
+
 from functools import lru_cache
 from typing import Optional, Annotated, Dict
 import enum
@@ -64,7 +69,7 @@ def get_config() -> AppConfig:
 
 def get_session(conf: Annotated[AppConfig, Depends(get_config)]):
     # engine = sa.create_engine("sqlite:///orders.db", echo=True)
-    engine = sa.create_engine(f"sqlite:///{conf.ORDERS_DB_URL}", echo=True)
+    engine = sa.create_engine(conf.ORDERS_DB_URL, echo=True)
     s = so.Session(engine)
     try:
         yield s 

@@ -8,7 +8,7 @@ from repository.models import Base, OrderModel, OrderItemModel
 
 def main():
     conf = AppConfig()
-    engine = create_engine(f"sqlite:///{conf.ORDERS_DB_URL}")
+    engine = create_engine(conf.ORDERS_DB_URL)
 
     print("Tring to create seed data for Orders DB")
     print("Note: The script will fail if the data already exists in the table")

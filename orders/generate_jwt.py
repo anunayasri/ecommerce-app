@@ -10,7 +10,7 @@ def generate_jwt():
         # "aud": "http://127.0.0.1:8000/products",
         "iat": now.timestamp(),
         "exp": (now + timedelta(hours=24)).timestamp(),
-        "user_id": "100", 
+        "user_id": "1", 
     }
 
     private_key_text = Path(AppConfig().AUTH_JWT_PRIVATE_KEY_FILE).read_text()
