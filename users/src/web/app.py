@@ -15,6 +15,7 @@ from pydantic import BaseModel
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
+from config import AppConfig
 from repository.users_sql_repository import UsersSQLRepository
 from users_service.entities import User
 from users_service.users_service import UsersService
@@ -26,7 +27,9 @@ from web.schemas import GetUserSchema
 # openssl rand -hex 32
 # SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 
-public_key_text = (Path(__file__).parent / "../../public_key.pem").read_text()
+conf = AppConfig()
+
+public_key_text = Path(conf.AUTH_JWT_PUBLIC_KEY_FILE).read_text()
 PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
 ALGORITHM = "RS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -35,15 +38,15 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins, or specify a list of allowed origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods, or specify allowed methods
-    allow_headers=["*"],  # Allow all headers, or specify allowed headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 sqlite_db = "users.db"
 
-engine = sa.create_engine(f"sqlite:///{sqlite_db}")
+engine = sa.create_engine(conf.USERS_DB_URL)
 Session = so.sessionmaker(engine)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -76,7 +79,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
 
-    private_key_text = Path("private_key.pem").read_text()
+    private_key_text = Path(conf.AUTH_JWT_PRIVATE_KEY_FILE).read_text()
     private_key = serialization.load_pem_private_key(
         private_key_text.encode(),
         password=None,
@@ -100,17 +103,18 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     )
     try:
         payload = jwt.decode(token, key=PUBLIC_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        username: str = payload.get("username")
+        if not username:
             raise credentials_exception
-        token_data = TokenData(username=username)
+
     except InvalidTokenError:
         raise credentials_exception
     
     # session defined globally
-    user = get_user(Session, token_data.username)
+    user = get_user(Session, username)
     if user is None:
         raise credentials_exception
+
     return user
 
 @app.post("/users/token")
@@ -126,7 +130,11 @@ async def login_for_access_token(
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={
+            "user_id": user.id,
+            "username": user.username,
+        },
+        expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")
 

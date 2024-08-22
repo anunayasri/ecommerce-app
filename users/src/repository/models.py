@@ -1,4 +1,3 @@
-import sqlalchemy as sa
 import sqlalchemy.orm as so
 from datetime import datetime
 
@@ -15,3 +14,7 @@ class UserModel(Base):
     hashed_password: so.Mapped[str]
     created_at: so.Mapped[datetime] = so.mapped_column(default=datetime.utcnow)
     updated_at: so.Mapped[datetime] = so.mapped_column(default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<User id:{self.id} first_name:{self.first_name} " + \
+            f"last_name:{self.last_name} username:{self.username}>"
