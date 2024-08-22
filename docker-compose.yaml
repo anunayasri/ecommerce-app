@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+
+  nginx:
+    image: nginx:1.27
+    container_name: ecomm_nginx
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - orders_srv
+
+  orders_srv:
+    build: ./orders
+    container_name: ecomm_orders_srv
+    ports:
+      - "8003:8003"
+    env_file: ./orders/.docker.env
