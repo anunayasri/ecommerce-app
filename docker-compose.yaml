@@ -12,6 +12,7 @@ services:
     depends_on:
       - orders_srv
       - users_srv
+      - products_srv
 
   orders_srv:
     build: ./orders
@@ -26,3 +27,10 @@ services:
     ports:
       - "8001:8001"
     env_file: ./users/.docker.env
+
+  products_srv:
+    build: ./products
+    container_name: ecomm_products_srv
+    ports:
+      - "8002:8002"
+    env_file: ./products/.docker.env
