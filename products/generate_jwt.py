@@ -22,7 +22,7 @@ def generate_jwt(role: Role):
         "role": role.value,
     }
 
-    conf = AppConfig
+    conf = AppConfig()
     private_key_text = Path(conf.AUTH_JWT_PRIVATE_KEY_FILE).read_text()
     private_key = serialization.load_pem_private_key(
         private_key_text.encode(),
