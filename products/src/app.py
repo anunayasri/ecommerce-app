@@ -25,16 +25,16 @@ PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
 
 app = FastAPI(debug=True)
 
-origins = [
-    "http://localhost",
-    "http://localhost:8000",
-    "http://127.0.0.1",
-    "http://127.0.0.1:8000",
-]
+# origins = [
+#     "http://localhost",
+#     "http://localhost:8000",
+#     "http://127.0.0.1",
+#     "http://127.0.0.1:8000",
+# ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

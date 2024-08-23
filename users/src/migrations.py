@@ -1,5 +1,3 @@
-
-from sqlalchemy import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
@@ -10,7 +8,7 @@ from users_service.auth import hash_password
 
 def main():
     conf = AppConfig()
-    engine = create_engine(conf.USERS_DB_URL)
+    engine = sa.create_engine(conf.USERS_DB_URL)
 
     print("Tring to create seed data for Users DB")
     print("Note: The script will fail if the data already exists in the table")
