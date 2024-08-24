@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
 
-  swagger:
+  nginx:
     image: swaggerapi/swagger-ui:v5.17.14
     container_name: ecomm_swagger_ui
     ports:
@@ -11,7 +11,7 @@ services:
     environment:
       SWAGGER_JSON: /usr/share/nginx/openapi.yaml
     volumes:
-      - ./nginx/nginx-swg.conf:/etc/nginx/conf.d/ecommerce.conf:ro
+      - ./nginx/ecomm-nginx.conf:/etc/nginx/conf.d/ecomm-nginx.conf:ro
       - ./swagger/ecommerce.yaml:/usr/share/nginx/openapi.yaml
     depends_on:
       - orders_srv
