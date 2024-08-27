@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from functools import lru_cache
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -35,14 +34,6 @@ public_key_text = Path(conf.AUTH_JWT_PUBLIC_KEY_FILE).read_text()
 PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
 ALGORITHM = "RS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     print(">>>> staring lifespan")
-#     yield
-#     print(">>>> Leaving lifespan")
-#
 
 app = FastAPI()
 
@@ -148,6 +139,7 @@ async def get_current_user(
 
     return user
 
+
 @app.post("/users/token")
 async def login_for_access_token(
     session: Annotated[so.Session, Depends(get_session)],
@@ -164,8 +156,9 @@ async def login_for_access_token(
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={
-            "user_id": user.id,
+            "user_id": user.id,     # used by other services to map data to user
             "username": user.username,
+            "role": user.role.value.lower(),    # BUYER or SELLER
         },
         expires_delta=access_token_expires
     )
