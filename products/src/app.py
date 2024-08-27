@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 import enum
 from pathlib import Path
-from typing import Annotated, Dict
+from typing import Annotated
 import uvicorn
 
 from fastapi import FastAPI, HTTPException, status
@@ -8,12 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.params import Depends
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from cryptography.x509 import load_pem_x509_certificate
-from db import Base, Product, ProductStatus
+from db import Product, ProductStatus
 import jwt
 from jwt.exceptions import InvalidTokenError
 from schemas import CreateProductSchema, GetProductSchema, UpdateProductSchema
@@ -44,11 +44,6 @@ engine = sa.create_engine(conf.PRODUCTS_DB_URL, echo=True)
 Session = so.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 bearer_auth = HTTPBearer()
-
-class UserRole(enum.Enum):
-    SELLER = "SELLER"
-    BUYER = "BUYER"
-    ORDER_SRV = "ORDER_SRV"
     
 def get_session():
     s = Session()
@@ -57,9 +52,28 @@ def get_session():
     finally:
         s.close()
     
+
+class UserRole(enum.Enum):
+    seller = "seller"
+    buyer = "buyer"
+
+class TokenIssuer(enum.Enum):
+    user_srv = "user_srv"
+    order_srv = "order_srv"
+
+@dataclass
+class JWTPayload:
+    # iss can be user_srv or order_srv based on which service issued the token
+    # if iss == user_srv, then user_id, username, user_role will be not None, 
+    # else they will be None
+    iss: str
+    user_id: int | None
+    username: str | None
+    user_role: str | None
+
 def get_jwt_payload(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_auth)]
-) -> int:
+) -> JWTPayload:
 
     """Validates the jwt token in the Authentication header.
     """
@@ -77,18 +91,22 @@ def get_jwt_payload(
             token,
             key=PUBLIC_KEY,
             algorithms=['RS256'],
-            audience=["PRODUCTS_SRV"],
         )
 
-        return payload
+        return JWTPayload(
+            iss = payload.get('iss'),
+            user_id = payload.get('user_id'),
+            username = payload.get('username'),
+            user_role = payload.get('user_role'),
+        )
 
     except InvalidTokenError as e:
         print(f"invalid token : {e}")
         raise credentials_exception
 
-def get_current_user(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> int:
-    user_id = jwt_payload.get("user_id")
-    if user_id is None:
+def get_current_user(jwt_payload: Annotated[JWTPayload, Depends(get_jwt_payload)]) -> int:
+    user_id = jwt_payload.user_id
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -97,8 +115,8 @@ def get_current_user(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> 
 
     return int(user_id)
 
-def get_user_role(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> UserRole | None:
-    role = jwt_payload.get('role')
+def get_user_role(jwt_payload: Annotated[JWTPayload, Depends(get_jwt_payload)]) -> UserRole | None:
+    role = jwt_payload.user_role
     if not role:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -187,14 +205,16 @@ def buy_product(
     product_id: int,
     order_quantity: int,
     session: Annotated[so.Session, Depends(get_session)],
-    role: Annotated[UserRole, Depends(get_user_role)],
+    jwt_payload: Annotated[JWTPayload, Depends(get_jwt_payload)],
 ) -> JSONResponse:
     """This api is used by the orders service to buy a product.
     The product quantity will be descreased by the order amount.
     The api will return an error if the inventory is insufficient.
     """
 
-    if role != UserRole.ORDER_SRV:
+    issuer = jwt_payload.iss
+
+    if issuer != TokenIssuer.order_srv.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Thsi is an internal api",

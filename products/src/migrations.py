@@ -17,7 +17,7 @@ def main():
     print("Successfully created tables in Products DB")
 
     print("Creating seed data in Products DB")
-    # with so.Session(engine) as session:
+
     session = so.Session(engine)
 
     products = [

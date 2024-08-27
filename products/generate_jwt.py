@@ -10,16 +10,15 @@ from config import AppConfig
 class Role(enum.Enum):
     SELLER = "SELLER"
     BUYER = "BUYER"
-    ORDER_SRV = "ORDER_SRV"
 
 def generate_jwt(role: Role):
     now = datetime.utcnow()
     payload = {
-        "aud": "PRODUCTS_SRV",
-        "iat": now.timestamp(),
+        "iss": "user_srv",
         "exp": (now + timedelta(hours=24)).timestamp(),
         "user_id": "1",
-        "role": role.value,
+        "username": "user-1",
+        "user_role": role.value,
     }
 
     conf = AppConfig()
