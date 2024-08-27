@@ -17,17 +17,14 @@ def main():
     Base.metadata.create_all(engine)
     print("Successfully created tables in Users DB")
 
-    return
-
     print("Creating seed data in Users DB")
     with so.Session(engine) as session:
 
         user = User(
-            id=1,
             first_name='FirstName',
             last_name='LastName',
             username='anunaya',
-            email=f'anunaya@email.com',
+            email='anunaya@email.com',
             hashed_password=hash_password('password'),
             role=UserRole.BUYER,
         )

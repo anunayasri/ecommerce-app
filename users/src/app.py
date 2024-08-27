@@ -154,11 +154,15 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    # iss values in access_token can be 
+    #   user_srv : token issued by user srv
+    #   order_srv : token issued by order srv
     access_token = create_access_token(
         data={
-            "user_id": user.id,     # used by other services to map data to user
-            "username": user.username,
-            "role": user.role.value.lower(),    # BUYER or SELLER
+            "iss": "user_srv",  # issued by user_srv
+            "user_id": user.id,  # used by other services to map data to user
+            "username": user.username,  # readable user identifier
+            "user_role": user.role.value.lower(),  # BUYER or SELLER
         },
         expires_delta=access_token_expires
     )
