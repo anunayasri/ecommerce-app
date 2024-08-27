@@ -121,3 +121,6 @@ orders srv:         http://localhost:8003
 ```
 
 You can user `http://localhost:8080` to work with the application.
+
+Note that orders service is dependent on products service to book products 
+while creating an order.
