@@ -94,7 +94,6 @@ def get_jwt_payload(
         )
 
     except InvalidTokenError as e:
-        print(f"invalid token : {e}")
         raise credentials_exception
 
 def get_current_user(jwt_payload: Annotated[JWTPayload, Depends(get_jwt_payload)]) -> int:

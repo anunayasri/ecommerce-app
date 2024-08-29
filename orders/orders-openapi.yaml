@@ -1,0 +1,182 @@
+---
+openapi: 3.1.0
+info:
+  title: FastAPI
+  version: 0.1.0
+paths:
+  "/orders":
+    get:
+      summary: Get Orders
+      operationId: get_orders_orders_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetOrdersSchema"
+      security:
+      - HTTPBearer: []
+    post:
+      summary: Create Order
+      operationId: create_order_orders_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateOrderSchema"
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetOrderSchema"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
+  "/orders/{order_id}":
+    get:
+      summary: Get Order
+      operationId: get_order_orders__order_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Order Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetOrderSchema"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+components:
+  schemas:
+    CreateOrderSchema:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/OrderItemSchema"
+          type: array
+          minItems: 1
+          title: Items
+      additionalProperties: false
+      type: object
+      required:
+      - items
+      title: CreateOrderSchema
+    GetOrderSchema:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/OrderItemSchema"
+          type: array
+          minItems: 1
+          title: Items
+        id:
+          type: integer
+          title: Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        status:
+          "$ref": "#/components/schemas/OrderStatus"
+      additionalProperties: false
+      type: object
+      required:
+      - items
+      - id
+      - created_at
+      - status
+      title: GetOrderSchema
+    GetOrdersSchema:
+      properties:
+        orders:
+          items:
+            "$ref": "#/components/schemas/GetOrderSchema"
+          type: array
+          title: Orders
+      additionalProperties: false
+      type: object
+      required:
+      - orders
+      title: GetOrdersSchema
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            "$ref": "#/components/schemas/ValidationError"
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    OrderItemSchema:
+      properties:
+        product_id:
+          type: integer
+          title: Product Id
+        quantity:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Quantity
+          default: 1
+      additionalProperties: false
+      type: object
+      required:
+      - product_id
+      title: OrderItemSchema
+    OrderStatus:
+      type: string
+      enum:
+      - CREATED
+      - PAID
+      - PROGRESS
+      - CANCELLED
+      - DISPATCHED
+      - DELIVERED
+      title: OrderStatus
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

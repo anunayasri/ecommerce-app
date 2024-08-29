@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -42,9 +43,9 @@ class OrdersService:
                 booked_items.append(item)
 
             except requests.exceptions.HTTPError as http_err:
-                print(f"ERROR: Http error in booking product: {http_err}")
+                logging.error(f"ERROR: Http error in booking product: {http_err}")
             except requests.exceptions.RequestException as err:
-                print(f"ERROR: Error in booking product: {err}")
+                logging.error(f"ERROR: Error in booking product: {err}")
 
         if len(booked_items) == 0:
             raise ProductNotBookedException("No items can be booked in product service.")

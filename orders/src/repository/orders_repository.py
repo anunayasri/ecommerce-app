@@ -25,12 +25,9 @@ class OrdersRepository:
         )
         self.session.add(order_model)
 
-        # print(f">>>>> om {order_model.id} | {order_model.created_at}")
-
         # Don't commit the session here
         ord = _OrderModel_to_Order(order_model)
 
-        # print(f">>>>> ord {ord.id} | {ord.created_at}")
         return ord
 
     def _get(self, id_, **filters):
