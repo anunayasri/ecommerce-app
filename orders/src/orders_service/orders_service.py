@@ -28,6 +28,7 @@ class OrdersService:
         # Then call products api. Update the order_items status as per the resp.
 
         token = gen_token_for_product_srv(AppConfig().AUTH_JWT_PRIVATE_KEY_FILE)
+        print(f">>> token for product_srv: {token}")
         booked_items = []
         for item in items:
             try:
@@ -62,23 +63,12 @@ class OrdersService:
         limit = filters.pop("limit", None)
         return self.orders_repository.list_orders(limit=limit, **filters)
 
-   
-    # def cancel_order(self, order_id, user_id):
-    #     order = self.orders_repository.get(order_id, user_id=user_id)
-    #     if order is None:
-    #         raise OrderNotFoundException(f"Order with id {order_id} not found")
-    #     order.cancel()
-    #     return self.orders_repository.update(order_id, status="cancelled")
-
-
 
 def gen_token_for_product_srv(private_key_file) -> str:
     now = datetime.utcnow()
     payload = {
-        "aud": "PRODUCTS_SRV",
-        "iat": now.timestamp(),
+        "iss": "order_srv",
         "exp": (now + timedelta(hours=24)).timestamp(),
-        "role": "ORDER_SRV",
     }
 
     private_key_text = Path(private_key_file).read_text()

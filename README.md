@@ -96,12 +96,81 @@ Project structure:
 └── users       # users service
 ```
 
-By default the services will create a sqlite db inside the container and will 
-create the required tables. However, this means that the sqlite file will not 
-persist the container restart. 
+### Creating Database 
 
-You can provide the connection string to an existing DB in the `.docker.env`
-file for each service.
+Each service has it's own database. The following are the default values for
+the DB, you can change them if you want.
+
+```sql 
+-- For simplicity, we create a single database
+CREATE DATABASE ecommdb;
+GRANT ALL PRIVILEGES ON DATABASE ecommdb TO postgres; -- postgres is the default user
+-- the password mentioned in the config files is 'admin'
+```
+
+You can provide the DB creds in the `.env` file in the root of each service. If
+you start the service without docker edit `.env` file and load it in the shell
+session. For working with docker, the configurations are mentioned in
+`.docker.env` file.
+
+### Create Tables and Seed Data
+
+Users Srv
+
+```sh
+cd users
+
+# install dependencies
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# run migration script
+PYTHONPAHT=$PWD/src python src/migrations.py
+```
+
+This will create a user with following details. You can use this user or 
+register a new user.
+
+```
+username: user-1
+password: password
+user_role: BUYER
+```
+
+Products Srv
+
+```sh
+cd products
+
+# install dependencies
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# run migration script
+PYTHONPAHT=$PWD/src python src/migrations.py
+```
+
+This will create a products with id `1` and `2`. You can use these product ids 
+while creating orders.
+
+Orders Srv
+
+```sh
+cd orders
+
+# install dependencies
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# run migration script
+PYTHONPAHT=$PWD/src python src/migrations.py
+```
+
+
+### Starting the Services
 
 ```sh
 # cd into project root
