@@ -30,18 +30,6 @@ PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
 
 app = FastAPI(debug=True)
 
-# orders_doc = yaml.safe_load(
-#     (Path(__file__).parent / '../../orders.yaml').read_text()
-# )
-# app.openapi = lambda: orders_doc
-
-# origins = [
-#     "http://localhost",
-#     "http://localhost:8000",
-#     "http://127.0.0.1",
-#     "http://127.0.0.1:8000",
-# ]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -120,7 +108,11 @@ def get_user_role(jwt_payload: Annotated[Dict, Depends(get_jwt_payload)]) -> Use
         ) 
     return UserRole(role)
 
-@app.get("/orders", response_model=GetOrdersSchema)
+@app.get(
+    "/orders",
+    response_model=GetOrdersSchema,
+    tags=["Order"],
+)
 def get_orders(
     session: Annotated[so.Session, Depends(get_session)],
     user_id: Annotated[int, Depends(get_current_user)],
@@ -140,6 +132,7 @@ def get_orders(
     "/orders",
     status_code=status.HTTP_201_CREATED,
     response_model=GetOrderSchema,
+    tags=["Order"],
 )
 def create_order(
     payload: CreateOrderSchema,
@@ -165,7 +158,11 @@ def create_order(
         raise ProductNotBookedException()
 
 
-@app.get("/orders/{order_id}", response_model=GetOrderSchema)
+@app.get(
+    "/orders/{order_id}",
+    response_model=GetOrderSchema,
+    tags=["Products"],
+)
 def get_order(
     order_id: int,
     session: Annotated[so.Session, Depends(get_session)],

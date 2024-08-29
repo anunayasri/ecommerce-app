@@ -35,7 +35,19 @@ PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
 ALGORITHM = "RS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-app = FastAPI()
+tags_metadata = [
+    {
+        "name": "User",
+        "description": """
+User registration & login.\n
+For registration, call `POST /users`, then login using the `usernmae` 
+& `password`, then call `POST buyer_profile` or `POST seller_profile` 
+to regsiter as buyer or seller 
+        """,
+    }
+]
+
+app = FastAPI(openapi_tags=tags_metadata)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,10 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sqlite_db = "users.db"
-
 engine = sa.create_engine(conf.USERS_DB_URL)
-# Session = so.sessionmaker(engine)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -140,7 +149,7 @@ async def get_current_user(
     return user
 
 
-@app.post("/users/token")
+@app.post("/users/token", tags=['User'])
 async def login_for_access_token(
     session: Annotated[so.Session, Depends(get_session)],
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
@@ -169,14 +178,14 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@app.get("/users/me/", response_model=GetUserSchema)
+@app.get("/users/me/", response_model=GetUserSchema, tags=['User'])
 async def read_users_me(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
     return current_user
 
 
-@app.post("/users", response_model=GetUserSchema)
+@app.post("/users", response_model=GetUserSchema, tags=['User'])
 async def register_user(
     session: Annotated[so.Session, Depends(get_session)],
     payload: CreateUserSchema,
@@ -211,7 +220,7 @@ async def register_user(
     return user
 
 
-@app.post("/buyer_profile", response_model=GetBuyerProfile)
+@app.post("/buyer_profile", response_model=GetBuyerProfile, tags=['User'])
 async def create_buyer_profile(
     session: Annotated[so.Session, Depends(get_session)],
     current_user: Annotated[User, Depends(get_current_user)],
@@ -248,7 +257,7 @@ async def create_buyer_profile(
     return buyer_profile
 
 
-@app.post("/seller_profile")
+@app.post("/seller_profile", tags=['User'])
 async def create_seller_profile(
     session: Annotated[so.Session, Depends(get_session)],
     current_user: Annotated[User, Depends(get_current_user)],

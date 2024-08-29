@@ -10,6 +10,8 @@ servers:
 paths:
   "/users/token":
     post:
+      tags:
+      - User
       summary: Login For Access Token
       operationId: login_for_access_token_users_token_post
       requestBody:
@@ -33,6 +35,8 @@ paths:
                 "$ref": "#/components/schemas/HTTPValidationError"
   "/users/me/":
     get:
+      tags:
+      - User
       summary: Read Users Me
       operationId: read_users_me_users_me__get
       responses:
@@ -42,137 +46,254 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/GetUserSchema"
-
-  /orders:
-    get:
-      summary: Returns a list of orders
-      operationId: getOrders
-      description: >
-        A list of orders made by the customer
-        sorted by date. Allows to filter orders
-        by range of dates.
+      security:
+      - OAuth2PasswordBearer: []
+  "/users":
+    post:
+      tags:
+      - User
+      summary: Register User
+      operationId: register_user_users_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateUserSchema"
+        required: true
       responses:
         '200':
-          description: A JSON array of orders
+          description: Successful Response
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: false
-                properties:
-                  orders:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/GetOrderSchema'
+                "$ref": "#/components/schemas/GetUserSchema"
         '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/buyer_profile":
     post:
-      summary: Creates an order
-      operationId: createOrder
+      tags:
+      - User
+      summary: Create Buyer Profile
+      operationId: create_buyer_profile_buyer_profile_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateBuyerProfile"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetBuyerProfile"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - OAuth2PasswordBearer: []
+  "/seller_profile":
+    post:
+      tags:
+      - User
+      summary: Create Seller Profile
+      operationId: create_seller_profile_seller_profile_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateSellerProfile"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - OAuth2PasswordBearer: []
+
+  "/orders":
+    get:
+      summary: Get Orders
+      operationId: get_orders_orders_get
+      tags: ["Order"]
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetOrdersSchema"
+      security:
+      - OAuth2PasswordBearer: []
+    post:
+      summary: Create Order
+      operationId: create_order_orders_post
+      tags: ["Order"]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateOrderSchema"
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetOrderSchema"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - OAuth2PasswordBearer: []
+  "/orders/{order_id}":
+    get:
+      summary: Get Order
+      operationId: get_order_orders__order_id__get
+      tags: ["Order"]
+      security:
+      - OAuth2PasswordBearer: []
+      parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Order Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetOrderSchema"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+
+  "/products":
+    post:
+      summary: Create Order
+      operationId: create_order_products_post
+      tags: ["Product"]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateProductSchema"
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetProductSchema"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - OAuth2PasswordBearer: []
+  "/products/{product_id}":
+    put:
+      summary: Update Product
+      description: |-
+        Seller can update the title, description, quantity of the product.
+        Deletion is not supported. However, the owner can delist the product by
+        setting the status field to INACTIVE
+      operationId: update_product_product__product_id__put
+      tags: ["Product"]
+      security:
+      - OAuth2PasswordBearer: []
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Product Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateOrderSchema'
-      responses:
-        '201':
-          description: A JSON representation of the created order
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetOrderSchema'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-  /orders/{order_id}:
-    parameters:
-      - in: path
-        name: order_id
-        required: true
-        schema:
-          type: string
-          format: int
-    get:
-      summary: Returns the details of a specific order
-      operationId: getOrder
+              "$ref": "#/components/schemas/UpdateProductSchema"
       responses:
         '200':
-          description: OK
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetOrderSchema'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                "$ref": "#/components/schemas/GetProductSchema"
         '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
 
 components:
   schemas:
     Body_login_for_access_token_users_token_post:
       properties:
-        grant_type:
-          anyOf:
-          - type: string
-            pattern: password
-          - type: 'null'
-          title: Grant Type
+        # grant_type:
+        #   anyOf:
+        #   - type: string
+        #     pattern: password
+        #   - type: 'null'
+        #   title: Grant Type
         username:
           type: string
           title: Username
         password:
           type: string
           title: Password
-        scope:
-          type: string
-          title: Scope
-          default: ''
-        client_id:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Client Id
-        client_secret:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Client Secret
+        # scope:
+        #   type: string
+        #   title: Scope
+        #   default: ''
+        # client_id:
+        #   anyOf:
+        #   - type: string
+        #   - type: 'null'
+        #   title: Client Id
+        # client_secret:
+        #   anyOf:
+        #   - type: string
+        #   - type: 'null'
+        #   title: Client Secret
       type: object
       required:
       - username
       - password
-      title: Body_login_for_access_token_users_token_post
-    GetUserSchema:
-      properties:
-        id:
-          type: integer
-          title: Id
-        first_name:
-          type: string
-          title: First Name
-        last_name:
-          type: string
-          title: Last Name
-        username:
-          type: string
-          title: Username
-        email:
-          type: string
-          format: email
-          title: Email
-      additionalProperties: false
-      type: object
-      required:
-      - id
-      - first_name
-      - last_name
-      - username
-      - email
-      title: GetUserSchema
+      title: LoginUsingPassword
+        
     HTTPValidationError:
       properties:
         detail:
@@ -182,19 +303,6 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
-    Token:
-      properties:
-        access_token:
-          type: string
-          title: Access Token
-        token_type:
-          type: string
-          title: Token Type
-      type: object
-      required:
-      - access_token
-      - token_type
-      title: Token
     ValidationError:
       properties:
         loc:
@@ -216,7 +324,6 @@ components:
       - msg
       - type
       title: ValidationError
-
     NotFound:
       description: The specified resource was not found.
       content:
@@ -229,7 +336,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-
     Error:
       type: object
       properties:
@@ -240,6 +346,131 @@ components:
       required:
         - detail
       additionalProperties: false
+
+    # Order Service Schemas
+
+    CreateBuyerProfile:
+      properties:
+        shipping_address:
+          type: string
+          title: Shipping Address
+      additionalProperties: false
+      type: object
+      required:
+      - shipping_address
+      title: CreateBuyerProfile
+    CreateSellerProfile:
+      properties:
+        store_name:
+          type: string
+          title: Store Name
+      additionalProperties: false
+      type: object
+      required:
+      - store_name
+      title: CreateSellerProfile
+    CreateUserSchema:
+      properties:
+        first_name:
+          type: string
+          title: First Name
+        last_name:
+          type: string
+          title: Last Name
+        username:
+          type: string
+          title: Username
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          title: Password
+        role:
+          "$ref": "#/components/schemas/UserRole"
+      additionalProperties: false
+      type: object
+      required:
+      - first_name
+      - last_name
+      - username
+      - email
+      - password
+      - role
+      title: CreateUserSchema
+    GetBuyerProfile:
+      properties:
+        user:
+          "$ref": "#/components/schemas/GetUserSchema"
+        shipping_address:
+          type: string
+          title: Shipping Address
+      type: object
+      required:
+      - user
+      - shipping_address
+      title: GetBuyerProfile
+    GetUserSchema:
+      properties:
+        id:
+          type: integer
+          title: Id
+        first_name:
+          type: string
+          title: First Name
+        last_name:
+          type: string
+          title: Last Name
+        username:
+          type: string
+          title: Username
+        email:
+          type: string
+          format: email
+          title: Email
+        role:
+          "$ref": "#/components/schemas/UserRole"
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - first_name
+      - last_name
+      - username
+      - email
+      - role
+      title: GetUserSchema
+    Token:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+      type: object
+      required:
+      - access_token
+      - token_type
+      title: Token
+    UserRole:
+      type: string
+      enum:
+      - BUYER
+      - SELLER
+      title: UserRole
+
+    OrderStatus:
+      type: string
+      enum:
+      - CREATED
+      - PAID
+      - PROGRESS
+      - CANCELLED
+      - DISPATCHED
+      - DELIVERED
+      title: OrderStatus
 
     OrderItemSchema:
       additionalProperties: false
@@ -270,35 +501,124 @@ components:
             $ref: '#/components/schemas/OrderItemSchema'
 
     GetOrderSchema:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/OrderItemSchema"
+          type: array
+          minItems: 1
+          title: Items
+        id:
+          type: integer
+          title: Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        status:
+          "$ref": "#/components/schemas/OrderStatus"
       additionalProperties: false
       type: object
       required:
-        - id
-        - created_at
-        - status
-        - items
+      - items
+      - id
+      - created_at
+      - status
+      title: GetOrderSchema
+
+    GetOrdersSchema:
+      properties:
+        orders:
+          items:
+            "$ref": "#/components/schemas/GetOrderSchema"
+          type: array
+          title: Orders
+      additionalProperties: false
+      type: object
+      required:
+      - orders
+      title: GetOrdersSchema
+    # Product service schemas
+
+    CreateProductSchema:
+      properties:
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        quantity:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Quantity
+          default: 1
+      type: object
+      required:
+      - title
+      - description
+      title: CreateProductSchema
+
+    GetProductSchema:
       properties:
         id:
+          type: integer
+          title: Id
+        title:
           type: string
-          format: int
-        created:
+          title: Title
+        description:
+          type: string
+          title: Description
+        user_id:
+          type: integer
+          title: User Id
+        quantity:
+          type: integer
+          title: Quantity
+        created_at:
           type: string
           format: date-time
-        status:
-          type: string
-          enum:
-            - CREATED
-            - PAID
-            - PROGRESS
-            - CANCELLED
-            - DISPATCHED
-            - DELIVERED
-        order:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/OrderItemSchema'
+          title: Created At
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - user_id
+      - quantity
+      - created_at
+      title: GetProductSchema
 
+    ProductStatus:
+      type: string
+      enum:
+      - ACTIVE
+      - INACTIVE
+      title: ProductStatus
+
+    UpdateProductSchema:
+      properties:
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        quantity:
+          type: integer
+          title: Quantity
+        status:
+          anyOf:
+          - "$ref": "#/components/schemas/ProductStatus"
+          - type: 'null'
+      type: object
+      required:
+      - title
+      - description
+      - quantity
+      title: UpdateProductSchema
 
   securitySchemes:
     OAuth2PasswordBearer:
@@ -308,17 +628,9 @@ components:
           scopes: {}
           tokenUrl: users/token
 
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+tags:
+- name: User
+  description: "\nUser registration & login.\n\nFor registration, call `POST /users`,
+    then login using the `usernmae` \n& `password`, then call `POST buyer_profile`
+    or `POST seller_profile` \nto regsiter as buyer or seller \n        "
 
-security:
-  - bearerAuth:
-      - getOrders
-      - createOrder
-      - getOrder
-      - updateOrder
-      - deleteOrder
-      - payOrder
-      - cancelOrder

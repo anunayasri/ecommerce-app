@@ -25,13 +25,6 @@ PUBLIC_KEY = load_pem_x509_certificate(public_key_text.encode()).public_key()
 
 app = FastAPI(debug=True)
 
-# origins = [
-#     "http://localhost",
-#     "http://localhost:8000",
-#     "http://127.0.0.1",
-#     "http://127.0.0.1:8000",
-# ]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -130,6 +123,7 @@ def get_user_role(jwt_payload: Annotated[JWTPayload, Depends(get_jwt_payload)]) 
     "/products",
     status_code=status.HTTP_201_CREATED,
     response_model=GetProductSchema,
+    tags=["Product"],
 )
 def create_order(
     payload: CreateProductSchema, 
@@ -137,7 +131,7 @@ def create_order(
     user_id: Annotated[int, Depends(get_current_user)],
     role: Annotated[UserRole, Depends(get_user_role)],
 ):
-    if role != UserRole.SELLER:
+    if role != UserRole.seller:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not a seller",
@@ -156,7 +150,11 @@ def create_order(
     return product
 
 
-@app.put( "/product/{product_id}", response_model=GetProductSchema)
+@app.put(
+    "/products/{product_id}",
+    response_model=GetProductSchema,
+    tags=["Product"],
+)
 def update_product(
     product_id: int,
     product_data: UpdateProductSchema,
@@ -169,7 +167,7 @@ def update_product(
     setting the status field to INACTIVE
     """
 
-    if role != UserRole.SELLER:
+    if role != UserRole.seller:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not a seller",
@@ -192,7 +190,8 @@ def update_product(
     product.title = product_data.title
     product.description = product_data.description
     product.quantity = product_data.quantity
-    product.status = product_data.status or product.status
+    _status = product_data.status or product.status
+    product.status = _status.value
 
     session.commit()
     session.refresh(product)
@@ -200,7 +199,7 @@ def update_product(
     return product
 
 
-@app.post('/product/{product_id}/buy')
+@app.post('/products/{product_id}/buy', tags=["Product"])
 def buy_product(
     product_id: int,
     order_quantity: int,

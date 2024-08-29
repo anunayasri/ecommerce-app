@@ -7,11 +7,11 @@ from cryptography.hazmat.primitives import serialization
 
 from config import AppConfig
 
-class Role(enum.Enum):
-    SELLER = "SELLER"
-    BUYER = "BUYER"
+class UserRole(enum.Enum):
+    seller = "seller"
+    buyer = "buyer"
 
-def generate_jwt(role: Role):
+def generate_jwt(role: UserRole):
     now = datetime.utcnow()
     payload = {
         "iss": "user_srv",
@@ -30,7 +30,7 @@ def generate_jwt(role: Role):
     return jwt.encode(payload=payload, key=private_key, algorithm="RS256")
 
 if __name__ == '__main__':
-    iss = Role(sys.argv[1])
+    iss = UserRole(sys.argv[1])
     print(f"Generating jwt for iss: {iss}")
     print(generate_jwt(iss))
 

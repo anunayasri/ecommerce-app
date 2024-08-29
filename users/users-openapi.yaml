@@ -1,0 +1,313 @@
+---
+openapi: 3.1.0
+info:
+  title: FastAPI
+  version: 0.1.0
+paths:
+  "/users/token":
+    post:
+      tags:
+      - User
+      summary: Login For Access Token
+      operationId: login_for_access_token_users_token_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              "$ref": "#/components/schemas/Body_login_for_access_token_users_token_post"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Token"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/users/me/":
+    get:
+      tags:
+      - User
+      summary: Read Users Me
+      operationId: read_users_me_users_me__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetUserSchema"
+      security:
+      - OAuth2PasswordBearer: []
+  "/users":
+    post:
+      tags:
+      - User
+      summary: Register User
+      operationId: register_user_users_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateUserSchema"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetUserSchema"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/buyer_profile":
+    post:
+      tags:
+      - User
+      summary: Create Buyer Profile
+      operationId: create_buyer_profile_buyer_profile_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateBuyerProfile"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GetBuyerProfile"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - OAuth2PasswordBearer: []
+  "/seller_profile":
+    post:
+      tags:
+      - User
+      summary: Create Seller Profile
+      operationId: create_seller_profile_seller_profile_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateSellerProfile"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - OAuth2PasswordBearer: []
+components:
+  schemas:
+    Body_login_for_access_token_users_token_post:
+      properties:
+        grant_type:
+          anyOf:
+          - type: string
+            pattern: password
+          - type: 'null'
+          title: Grant Type
+        username:
+          type: string
+          title: Username
+        password:
+          type: string
+          title: Password
+        scope:
+          type: string
+          title: Scope
+          default: ''
+        client_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Client Id
+        client_secret:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Client Secret
+      type: object
+      required:
+      - username
+      - password
+      title: Body_login_for_access_token_users_token_post
+    CreateBuyerProfile:
+      properties:
+        shipping_address:
+          type: string
+          title: Shipping Address
+      additionalProperties: false
+      type: object
+      required:
+      - shipping_address
+      title: CreateBuyerProfile
+    CreateSellerProfile:
+      properties:
+        store_name:
+          type: string
+          title: Store Name
+      additionalProperties: false
+      type: object
+      required:
+      - store_name
+      title: CreateSellerProfile
+    CreateUserSchema:
+      properties:
+        first_name:
+          type: string
+          title: First Name
+        last_name:
+          type: string
+          title: Last Name
+        username:
+          type: string
+          title: Username
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          title: Password
+        role:
+          "$ref": "#/components/schemas/UserRole"
+      additionalProperties: false
+      type: object
+      required:
+      - first_name
+      - last_name
+      - username
+      - email
+      - password
+      - role
+      title: CreateUserSchema
+    GetBuyerProfile:
+      properties:
+        user:
+          "$ref": "#/components/schemas/GetUserSchema"
+        shipping_address:
+          type: string
+          title: Shipping Address
+      type: object
+      required:
+      - user
+      - shipping_address
+      title: GetBuyerProfile
+    GetUserSchema:
+      properties:
+        id:
+          type: integer
+          title: Id
+        first_name:
+          type: string
+          title: First Name
+        last_name:
+          type: string
+          title: Last Name
+        username:
+          type: string
+          title: Username
+        email:
+          type: string
+          format: email
+          title: Email
+        role:
+          "$ref": "#/components/schemas/UserRole"
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - first_name
+      - last_name
+      - username
+      - email
+      - role
+      title: GetUserSchema
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            "$ref": "#/components/schemas/ValidationError"
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    Token:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+      type: object
+      required:
+      - access_token
+      - token_type
+      title: Token
+    UserRole:
+      type: string
+      enum:
+      - BUYER
+      - SELLER
+      title: UserRole
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    OAuth2PasswordBearer:
+      type: oauth2
+      flows:
+        password:
+          scopes: {}
+          tokenUrl: users/token
+tags:
+- name: User
+  description: "\nUser registration & login.\n\nFor registration, call `POST /users`,
+    then login using the `usernmae` \n& `password`, then call `POST buyer_profile`
+    or `POST seller_profile` \nto regsiter as buyer or seller \n        "
+
